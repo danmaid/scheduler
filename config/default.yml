@@ -1,0 +1,6 @@
+build:
+  dir: /build/
+auth:
+  clientId: 209c5b80-d738-40bf-838f-13cb8b2fd392
+api:
+  baseurl: https://graph.microsoft.com/v1.0

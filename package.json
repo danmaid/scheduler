@@ -10,6 +10,8 @@
   "dependencies": {
     "@mdi/font": "^3.6.95",
     "core-js": "^3.4.3",
+    "loglevel": "^1.6.6",
+    "msal": "^1.2.0",
     "register-service-worker": "^1.6.2",
     "roboto-fontface": "*",
     "vue": "^2.6.10",
@@ -26,6 +28,7 @@
     "@vue/cli-service": "^4.1.0",
     "@vue/eslint-config-standard": "^4.0.0",
     "babel-eslint": "^10.0.3",
+    "config": "^3.2.4",
     "eslint": "^5.16.0",
     "eslint-plugin-vue": "^5.0.0",
     "sass": "^1.23.7",
@@ -43,7 +46,9 @@
       "plugin:vue/essential",
       "@vue/standard"
     ],
-    "rules": {},
+    "rules": {
+      "space-before-function-paren": 0
+    },
     "parserOptions": {
       "parser": "babel-eslint"
     }
