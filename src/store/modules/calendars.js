@@ -79,27 +79,24 @@ export default {
       }
       commit('setGroupCalendars', calendars)
     },
-    async getUserCalendar({ dispatch }, userId) {
+    async getCalendarView({ dispatch }, { baseUrl, startDateTime, endDateTime }) {
+      logger.debug(baseUrl, startDateTime, endDateTime)
       const accessToken = await dispatch('account/getAccessToken', null, { root: true })
       const headers = new Headers()
       headers.append('Authorization', 'Bearer ' + accessToken)
-      const url = new URL(`${config.baseurl}/users/${userId}/calendarView`)
-      url.searchParams.append('startDateTime', '2019-12-20T00:00:00+09:00')
-      url.searchParams.append('endDateTime', '2019-12-30T00:00:00+09:00')
+      headers.append('Prefer', 'outlook.timezone="Tokyo Standard Time"')
+      const url = new URL(`${baseUrl}/calendarView`)
+      url.searchParams.append('startDateTime', startDateTime.toISOString())
+      url.searchParams.append('endDateTime', endDateTime.toISOString())
       const res = await fetch(url, { headers })
       logger.debug(res)
-      return res.json()
-    },
-    async getGroupCalendar({ dispatch }, groupId) {
-      const accessToken = await dispatch('account/getAccessToken', null, { root: true })
-      const headers = new Headers()
-      headers.append('Authorization', 'Bearer ' + accessToken)
-      const url = new URL(`${config.baseurl}/users/${groupId}/calendarView`)
-      url.searchParams.append('startDateTime', '2019-12-20T00:00:00+09:00')
-      url.searchParams.append('endDateTime', '2019-12-30T00:00:00+09:00')
-      const res = await fetch(url, { headers })
-      logger.debug(res)
-      return res.json()
+      const data = await res.json()
+      return data.value.map(v => ({
+        id: v.id,
+        subject: v.subject,
+        start: new Date(v.start.dateTime),
+        end: new Date(v.end.dateTime)
+      }))
     }
   }
 }
