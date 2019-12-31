@@ -1,168 +1,41 @@
 <template>
   <div class="home">
-    <div class="d-flex justify-space-between align-baseline calendar">
-      <div class="title">
-        <v-btn text @click="gotoToday">今日</v-btn>
-        <v-btn icon @click="gotoPrevious">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
-        <v-btn icon @click="gotoNext">
-          <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
-      </div>
-      <div v-for="i in days" :key="i.toString()" class="day">{{ i.toLocaleString() }}</div>
-    </div>
-    <strong>個人</strong>
-    <div v-for="calendar of userCalendars" :key="calendar.id" class="calendar">
-      <div class="d-flex justify-space-between align-baseline">
-        <div class="title">{{ calendar.name }}</div>
-        <Events
-          :baseUrl="`${config.baseurl}/users/${calendar.userId}`"
-          :start="start"
-          :end="end"
-          v-slot="props"
-          class="grid"
-        >
-          <div
-            v-for="event in props.events"
-            :key="event.id"
-            :style="{
-              'grid-column-start': getStartPos(event.start),
-              'grid-column-end': getEndPos(event.end),
-              display: getStartPos(event.start) === getEndPos(event.end) ? 'none' : 'block'
-            }"
-            class="event"
-          >{{ event.subject }}</div>
-        </Events>
-      </div>
-    </div>
-    <strong>グループ</strong>
-    <div v-for="calendar of groupCalendars" :key="calendar.id" class="calendar">
-      <div class="d-flex justify-space-between align-baseline">
-        <div class="title">{{ calendar.name }}</div>
-        <Events
-          :baseUrl="`${config.baseurl}/groups/${calendar.groupId}`"
-          :start="start"
-          :end="end"
-          v-slot="props"
-          class="grid"
-        >
-          <div
-            v-for="event in props.events"
-            :key="event.id"
-            :style="{
-              'grid-column-start': getStartPos(event.start),
-              'grid-column-end': getEndPos(event.end),
-              display: getStartPos(event.start) === getEndPos(event.end) ? 'none' : 'block'
-            }"
-            class="event"
-          >{{ event.subject }}</div>
-        </Events>
-      </div>
-    </div>
+    <v-select v-model="selected" :items="views" />
+    <component :is="selected.component" v-model="date" />
   </div>
 </template>
 
 <script>
-import { mapActions, mapState } from 'vuex'
-import Events from '@/components/Events.vue'
-import { api as config } from 'config'
-
 export default {
-  name: 'home',
-  components: { Events },
   data() {
     return {
-      config,
-      baseDate: new Date(new Date().setHours(0, 0, 0, 0))
+      date: new Date(new Date().setHours(0, 0, 0, 0)),
+      views: [
+        {
+          text: '日',
+          value: 'day',
+          component: () => import('../components/DailyView.vue')
+        },
+        {
+          text: '週',
+          value: 'week',
+          component: () => import('../components/WeeklyView.vue')
+        }
+      ]
     }
   },
   computed: {
-    ...mapState({
-      userCalendars: state => state.calendars.userCalendars,
-      groupCalendars: state => state.calendars.groupCalendars
-    }),
-    start() {
-      const newdate = new Date(this.baseDate)
-      return newdate
-    },
-    end() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() + 7)
-      return newdate
-    },
-    days() {
-      return [0, 1, 2, 3, 4, 5, 6].map(i => {
-        const newdate = new Date(this.baseDate)
-        newdate.setDate(newdate.getDate() + i)
-        return newdate
-      })
+    selected: {
+      get() {
+        return this.views.find(v => v.value === this.$route.params.view)
+      },
+      set(value) {
+        this.$router.push({ name: this.$route.name, params: { view: value } })
+      }
     }
-  },
-  methods: {
-    ...mapActions({
-      getUserCalendars: 'calendars/getUserCalendars',
-      getGroupCalendars: 'calendars/getGroupCalendars'
-    }),
-
-    gotoToday() {
-      this.baseDate = new Date(new Date().setHours(0, 0, 0, 0))
-    },
-    gotoNext() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() + 1)
-      this.baseDate = newdate
-    },
-    gotoPrevious() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() - 1)
-      this.baseDate = newdate
-    },
-
-    getStartPos(date) {
-      const start = Array.from(this.days)
-        .reverse()
-        .findIndex(v => v <= date)
-      return start >= 0 ? this.days.length - start : 1
-    },
-    getEndPos(date) {
-      const end = this.days.findIndex(v => date <= v) + 1
-      return end > 0 ? end : -1
-    },
-    getGridPos(startDate, endDate) {
-      const startRev = Array.from(this.days)
-        .reverse()
-        .findIndex(v => v <= startDate)
-      const start = startRev >= 0 ? this.days.length - startRev : 1
-      const end = this.days.findIndex(v => endDate <= v) + 1
-      return `${start} / ${end}`
-    }
-  },
-  mounted() {
-    this.getUserCalendars()
-    this.getGroupCalendars()
   }
 }
 </script>
 
-<style scoped>
-.calendar {
-  border-bottom: 1px solid #000;
-}
-.title {
-  flex: 0 0 200px;
-}
-.day {
-  flex: 1 1 100%;
-  border-left: 1px solid #000;
-}
-.grid {
-  flex: 1 1 100%;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-}
-.event {
-  background: cyan;
-  border: 1px solid;
-}
+<style>
 </style>
