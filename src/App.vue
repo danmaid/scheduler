@@ -1,15 +1,53 @@
 <template>
   <v-app>
-    <div id="nav">
-      <router-link to="/">Home</router-link>|
-      <router-link to="/week">Week</router-link>|
-      <router-link to="/login">Login</router-link>
-    </div>
+    <v-app-bar app>
+      <v-spacer />
+      <template v-if="loggedin == true">
+        <v-chip v-if="me" outlined pill>
+          <v-img src="./assets/ms-symbollockup_mssymbol_19.svg" />
+          {{ me.displayName }}
+        </v-chip>
+        <v-btn text class="d-flex align-center" outlined tile @click="logout">
+          <v-img src="./assets/ms-symbollockup_mssymbol_19.svg" />
+          <span class="ms-logo">サインアウト</span>
+        </v-btn>
+      </template>
+      <template v-else>
+        <v-btn text class="d-flex align-center" outlined tile @click="login">
+          <v-img src="./assets/ms-symbollockup_mssymbol_19.svg" />
+          <span class="ms-logo">サインイン</span>
+        </v-btn>
+      </template>
+    </v-app-bar>
+
     <v-content>
       <router-view />
     </v-content>
   </v-app>
 </template>
+
+<script>
+import { mapActions, mapState } from 'vuex'
+
+export default {
+  computed: {
+    ...mapState({
+      loggedin: state => state.account.loggedin,
+      me: state => state.account.me
+    })
+  },
+  methods: {
+    ...mapActions({
+      login: 'account/login',
+      logout: 'account/logout',
+      getMe: 'account/getMe'
+    })
+  },
+  mounted() {
+    this.getMe()
+  }
+}
+</script>
 
 <style lang="scss">
 :root {
@@ -34,5 +72,12 @@
       color: #42b983;
     }
   }
+}
+.ms-logo {
+  margin-left: 6px;
+  font-family: 'Segoe UI';
+  font-size: 15px;
+  font-weight: 600;
+  color: #5e5e5e;
 }
 </style>
