@@ -9,7 +9,7 @@ fs.writeFileSync(configFile, JSON.stringify(config))
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production'
-    ? '/scheduler/'
+    ? '/scheduler/dist/'
     : '/',
   devServer: {
     https: true

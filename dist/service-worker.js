@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/scheduler/precache-manifest.55e23f970fdee95204bcb29e1e534f38.js"
+  "/scheduler/dist/precache-manifest.0fefe2e330695d90a9682e9145e9cfa7.js"
 );
 
 workbox.core.setCacheNameDetails({prefix: "scheduler"});
