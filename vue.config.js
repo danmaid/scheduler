@@ -8,6 +8,9 @@ fs.mkdirSync(configDir, { recursive: true })
 fs.writeFileSync(configFile, JSON.stringify(config))
 
 module.exports = {
+  publicPath: process.env.NODE_ENV === 'production'
+    ? '/scheduler/'
+    : '/',
   devServer: {
     https: true
   },
