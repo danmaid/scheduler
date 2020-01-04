@@ -30,7 +30,7 @@ export default {
   },
   methods: {
     ...mapActions({
-      getCalendarView: 'calendars/getCalendarView'
+      getCalendarView: 'getCalendarView'
     }),
     getEvents() {
       clearTimeout(this.delay)

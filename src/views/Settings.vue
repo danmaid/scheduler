@@ -97,6 +97,7 @@
             </v-col>
           </v-row>
         </v-col>
+        <v-col cols="12" sm="6" class="d-flex align-center justify-center">表示カレンダー</v-col>
       </v-row>
       <v-row>
         <v-col cols="12" sm="6">
@@ -121,20 +122,24 @@
                   color="deep-orange"
                 >mdi-account-multiple-outline</v-icon>
               </template>
+              <template v-slot:item.used="{ item }">
+                <v-btn color="primary" :disabled="item.used()" @click="add(item)">
+                  <v-icon>mdi-chevron-right</v-icon>
+                </v-btn>
+              </template>
             </v-data-table>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="1" class="d-flex align-center">
-          <v-btn color="primary">
-            <v-icon>mdi-chevron-triple-right</v-icon>
-          </v-btn>
-        </v-col>
-        <v-col cols="12" sm="5">
-          <v-list>
-            <v-list-item v-for="(item, i) in used" :key="i">
-              <v-list-item-content v-text="item" />
-            </v-list-item>
-          </v-list>
+        <v-col cols="12" sm="6">
+          <v-card>
+            <v-data-table :items="used" :headers="usedHeaders">
+              <template v-slot:item.used="{ item }">
+                <v-btn color="primary" @click="remove(item)">
+                  <v-icon>mdi-chevron-left</v-icon>
+                </v-btn>
+              </template>
+            </v-data-table>
+          </v-card>
         </v-col>
       </v-row>
     </v-container>
@@ -142,7 +147,7 @@
 </template>
 
 <script>
-import { mapActions } from 'vuex'
+import { mapActions, mapState } from 'vuex'
 import { api as config } from 'config'
 
 export default {
@@ -156,17 +161,28 @@ export default {
       usersAll: false,
       groups: false,
       groupsAll: false,
-      used: ['cal1'],
+      // used: [],
       fetched: [],
       loading: false,
       headers: [
         { text: 'カレンダー名', value: 'name' },
         { text: '所有者', value: 'owner.name' },
-        { text: '取得元', value: 'from' }
-      ]
+        { text: '取得元', value: 'from' },
+        { text: '', value: 'used', sortable: false, width: 10 }
+      ],
+      usedHeaders: [
+        { text: '', value: 'used', sortable: false, width: 10 },
+        { text: 'カレンダー名', value: 'name' },
+        { text: '所有者', value: 'owner.name' }
+      ],
+      selected: []
     }
   },
   computed: {
+    ...mapState({
+      used: state => state.calendarList
+    }),
+
     fetchedMe: {
       get() {
         return this.getFetchedList('me')
@@ -256,6 +272,7 @@ export default {
           exist.from.push(key)
         } else {
           item.from = [key]
+          item.used = () => !!this.used.find(v => v.id === item.id)
           this.fetched.push(item)
         }
       }
@@ -268,8 +285,10 @@ export default {
         const headers = new Headers()
         headers.append('Authorization', 'Bearer ' + accessToken)
         const url = new URL(`${config.baseurl}/me/calendar`)
+        url.searchParams.append('$select', 'id,name,owner')
         const res = await fetch(url, { headers })
         const data = await res.json()
+        data.source = `${config.baseurl}/me/calendar`
         this.fetchedMe = [data]
       } finally {
         this.loading = false
@@ -286,9 +305,13 @@ export default {
         const headers = new Headers()
         headers.append('Authorization', 'Bearer ' + accessToken)
         const url = new URL(`${config.baseurl}/me/calendars`)
+        url.searchParams.append('$select', 'id,name,owner')
         const res = await fetch(url, { headers })
         const data = await res.json()
-        this.fetchedMeAll = data.value
+        this.fetchedMeAll = data.value.map(v => ({
+          ...v,
+          source: `${config.baseurl}/me/calendars/${v.id}`
+        }))
       } finally {
         this.loading = false
       }
@@ -314,6 +337,7 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
+            data.source = `${config.baseurl}/users/${user.id}/calendar`
             calendars.push(data)
           }
         }
@@ -343,7 +367,12 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
-            calendars.push(...data.value)
+            calendars.push(
+              ...data.value.map(v => ({
+                ...v,
+                source: `${config.baseurl}/users/${user.id}/calendars/${v.id}`
+              }))
+            )
           }
         }
         this.fetchedOthersAll = calendars
@@ -372,6 +401,7 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
+            data.source = `${config.baseurl}/users/${user.id}/calendar`
             calendars.push(data)
           }
         }
@@ -401,7 +431,12 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
-            calendars.push(...data.value)
+            calendars.push(
+              ...data.value.map(v => ({
+                ...v,
+                source: `${config.baseurl}/users/${user.id}/calendars/${v.id}`
+              }))
+            )
           }
         }
         this.fetchedUsersAll = calendars
@@ -430,6 +465,7 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
+            data.source = `${config.baseurl}/groups/${group.id}/calendar`
             calendars.push(data)
           }
         }
@@ -459,6 +495,7 @@ export default {
           const res = await fetch(url, { headers })
           if (res.ok) {
             const data = await res.json()
+            data.source = `${config.baseurl}/groups/${group.id}/calendar`
             calendars.push(data)
           }
         }
@@ -469,6 +506,16 @@ export default {
     },
     removeGroupsAll() {
       this.fetchedGroupsAll = []
+    },
+
+    add(item) {
+      this.used.push(item)
+    },
+    remove(item) {
+      const index = this.used.findIndex(v => v.id === item.id)
+      if (index >= 0) {
+        this.used.splice(index, 1)
+      }
     }
   }
 }

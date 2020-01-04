@@ -1,5 +1,5 @@
 <template>
-  <div class="dayly-view">
+  <v-container class="week-view" fluid>
     <div class="d-flex justify-space-between align-baseline calendar">
       <div class="title">
         <v-btn icon @click="gotoPrevious">
@@ -10,23 +10,13 @@
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </div>
-      <div
-        v-for="i in days"
-        :key="i.toString()"
-        class="day"
-      >{{ ('00' + i.getHours()).slice(-2) }}:{{ ('00' + i.getMinutes()).slice(-2) }}</div>
+      <div v-for="i in days" :key="i.toString()" class="day">{{ i.toLocaleDateString() }}</div>
     </div>
-    <strong>個人</strong>
-    <div v-for="calendar of userCalendars" :key="calendar.id" class="calendar">
+    <div v-for="calendar of calendarList" :key="calendar.id" class="calendar">
       <div class="d-flex justify-space-between align-baseline">
-        <div class="title">{{ calendar.name }}</div>
-        <Events
-          :baseUrl="`${config.baseurl}/users/${calendar.userId}`"
-          :start="start"
-          :end="end"
-          v-slot="props"
-          class="grid"
-        >
+        <div class="title" v-if="calendar.owner">{{ calendar.owner.name }} - {{ calendar.name }}</div>
+        <div class="title" v-else>{{ calendar.name }}</div>
+        <Events :baseUrl="calendar.source" :start="start" :end="end" v-slot="props" class="grid">
           <div
             v-for="event in props.events"
             :key="event.id"
@@ -40,49 +30,17 @@
         </Events>
       </div>
     </div>
-    <strong>グループ</strong>
-    <div v-for="calendar of groupCalendars" :key="calendar.id" class="calendar">
-      <div class="d-flex justify-space-between align-baseline">
-        <div class="title">{{ calendar.name }}</div>
-        <Events
-          :baseUrl="`${config.baseurl}/groups/${calendar.groupId}`"
-          :start="start"
-          :end="end"
-          v-slot="props"
-          class="grid"
-        >
-          <div
-            v-for="event in props.events"
-            :key="event.id"
-            :style="{
-              'grid-column-start': getStartPos(event.start),
-              'grid-column-end': getEndPos(event.end),
-              display: getStartPos(event.start) === getEndPos(event.end) ? 'none' : 'block'
-            }"
-            class="event"
-          >{{ event.subject }}</div>
-        </Events>
-      </div>
-    </div>
-  </div>
+  </v-container>
 </template>
 
 <script>
-import { mapActions, mapState } from 'vuex'
+import { mapState } from 'vuex'
 import Events from '@/components/Events.vue'
 import { api as config } from 'config'
 
 export default {
-  name: 'DailyView',
+  name: 'WeeklyView',
   components: { Events },
-  props: {
-    value: {
-      type: Date,
-      default() {
-        return new Date(new Date().setHours(0, 0, 0, 0))
-      }
-    }
-  },
   data() {
     return {
       config
@@ -90,15 +48,14 @@ export default {
   },
   computed: {
     ...mapState({
-      userCalendars: state => state.calendars.userCalendars,
-      groupCalendars: state => state.calendars.groupCalendars
+      calendarList: state => state.calendarList
     }),
     baseDate: {
       get() {
-        return this.value
+        return this.$store.state.baseDate
       },
       set(value) {
-        this.$emit('input', value)
+        this.$store.commit('setBaseDate', value)
       }
     },
     start() {
@@ -107,23 +64,18 @@ export default {
     },
     end() {
       const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() + 1)
+      newdate.setDate(newdate.getDate() + 7)
       return newdate
     },
     days() {
-      return [...Array(24).keys()].map(i => {
+      return [0, 1, 2, 3, 4, 5, 6].map(i => {
         const newdate = new Date(this.baseDate)
-        newdate.setHours(newdate.getHours() + i)
+        newdate.setDate(newdate.getDate() + i)
         return newdate
       })
     }
   },
   methods: {
-    ...mapActions({
-      getUserCalendars: 'calendars/getUserCalendars',
-      getGroupCalendars: 'calendars/getGroupCalendars'
-    }),
-
     gotoToday() {
       this.baseDate = new Date(new Date().setHours(0, 0, 0, 0))
     },
@@ -156,10 +108,6 @@ export default {
       const end = this.days.findIndex(v => endDate <= v) + 1
       return `${start} / ${end}`
     }
-  },
-  mounted() {
-    this.getUserCalendars()
-    this.getGroupCalendars()
   }
 }
 </script>
@@ -178,7 +126,7 @@ export default {
 .grid {
   flex: 1 1 100%;
   display: grid;
-  grid-template-columns: repeat(24, 1fr);
+  grid-template-columns: repeat(7, 1fr);
 }
 .event {
   background: cyan;

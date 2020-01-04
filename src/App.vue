@@ -1,15 +1,19 @@
 <template>
   <v-app>
     <v-app-bar app>
-      <v-spacer />
+      <h1 class="text-no-wrap">予定表</h1>
+      <v-tabs>
+        <v-tab to="/week">週表示</v-tab>
+        <v-tab to="/day">日表示</v-tab>
+      </v-tabs>
+      <v-btn icon to="/settings">
+        <v-icon>mdi-settings</v-icon>
+      </v-btn>
       <template v-if="loggedin == true">
-        <v-chip v-if="me" outlined pill>
+        <v-btn text class="d-flex align-center" outlined @click="logout">
           <v-img src="./assets/ms-symbollockup_mssymbol_19.svg" />
-          {{ me.displayName }}
-        </v-chip>
-        <v-btn text class="d-flex align-center" outlined tile @click="logout">
-          <v-img src="./assets/ms-symbollockup_mssymbol_19.svg" />
-          <span class="ms-logo">サインアウト</span>
+          <span v-if="me" class="pl-2">{{ me.displayName }}</span>
+          <v-icon>mdi-logout</v-icon>
         </v-btn>
       </template>
       <template v-else>

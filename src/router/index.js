@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
 
 Vue.use(VueRouter)
 
@@ -11,9 +10,14 @@ const routes = [
     component: () => import(/* webpackChunkName: "settings" */ '../views/Settings.vue')
   },
   {
-    path: '/:view',
-    name: 'home',
-    component: Home
+    path: '/day',
+    name: 'day',
+    component: () => import('../views/Day.vue')
+  },
+  {
+    path: '/week',
+    name: 'week',
+    component: () => import('../views/Week.vue')
   }
 ]
 
