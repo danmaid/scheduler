@@ -46,7 +46,7 @@ const store = new Vuex.Store({
 
 function load() {
   try {
-    return JSON.parse(localStorage.getItem('calendarList'))
+    return JSON.parse(localStorage.getItem('calendarList')) || []
   } catch {
     return []
   }
