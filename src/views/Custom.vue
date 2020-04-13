@@ -1,13 +1,18 @@
 <template>
   <v-container class="custom" fluid>
     <v-data-table :headers="headers" :items="calendars" group-by="category" disable-sort>
+      <template v-slot:header.actions>
+        <v-btn icon @click="dialog = editor">
+          <v-icon small>mdi-cog</v-icon>
+        </v-btn>
+      </template>
       <template v-slot:header.left>
-        <v-btn icon @click="prev">
+        <v-btn icon :disabled="page <= 0" @click="page--">
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
       </template>
-      <template v-slot:header.actions>
-        <v-btn icon @click="next">
+      <template v-slot:header.right>
+        <v-btn icon :disabled="page >= ranges.length - 1" @click="page++">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </template>
@@ -45,22 +50,49 @@
         </template>
       </template>
     </v-data-table>
+
+    <v-dialog v-if="dialog" :value="true" persistent>
+      <component
+        :is="dialog"
+        :value="ranges"
+        :name="name"
+        @close="dialog = null"
+        @input="save($event)"
+      />
+    </v-dialog>
   </v-container>
 </template>
 
 <script>
 import { mapState } from 'vuex'
+import defaultRange from '../presets/default'
+import { v4 as uuid } from 'uuid'
 
 export default {
+  props: {
+    value: {
+      type: String,
+      required: true
+    },
+    options: {
+      type: Object,
+      default() {
+        return {}
+      }
+    }
+  },
   data() {
     return {
       headerStart: [
-        { text: 'カレンダー名', value: 'name', divider: true, width: 200 },
-        { value: 'left', sortable: false, width: 10, class: 'px-1' }
+        { text: 'カレンダー名', value: 'name', divider: true, width: 200 }
       ],
       headerEnd: [{ value: 'actions', sortable: false, width: 10 }],
-      range: [],
-      baseDate: new Date()
+      id: this.value,
+      ranges: this.load(this.value),
+      page: 0,
+      name: this.options.name || 'カスタム',
+      dialog: null,
+      editor: () => import('../components/CustomEditor.vue')
     }
   },
   computed: {
@@ -69,7 +101,32 @@ export default {
         state.calendars.map(v => ({ ...v, loading: false, events: [] }))
     }),
     headers() {
-      return [].concat(this.headerStart, this.range, this.headerEnd)
+      const headers = [...this.headerStart]
+      const ranges = this.ranges
+      if (Array.isArray(ranges) && ranges.every(v => Array.isArray(v))) {
+        headers.push({
+          value: 'left',
+          sortable: false,
+          width: 10,
+          class: 'px-1'
+        })
+        headers.push(
+          ...ranges[this.page].map((v, i, arr) => ({
+            ...v,
+            align: 'center',
+            width: `${100 / arr.length}%`
+          }))
+        )
+        headers.push({
+          value: 'right',
+          sortable: false,
+          width: 10,
+          class: 'px-1'
+        })
+      } else {
+        headers.push(...ranges)
+      }
+      return headers.concat(...this.headerEnd)
     }
   },
   watch: {
@@ -82,37 +139,16 @@ export default {
   },
   methods: {
     initialize() {
-      const weekStart = this.baseDate
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
-      this.range = this.getRange(weekStart)
       this.calendars.forEach(v => {
         this.getEventsFromApi(v)
       })
-    },
-    getRange(date) {
-      return new Array(7).fill().map((v, i) => {
-        const day = new Date(date)
-        day.setDate(day.getDate() + i)
-        const start = new Date(day)
-        const end = new Date(day)
-        end.setDate(end.getDate() + 1)
-        end.setTime(end.getTime() - 1)
-        return {
-          text: this.formatDate(day),
-          value: 'events',
-          start,
-          end,
-          align: 'center',
-          width: '12%'
-        }
-      })
-    },
-    formatDate(date) {
-      const yyyy = date.getFullYear()
-      const mm = ('00' + (date.getMonth() + 1)).slice(-2)
-      const dd = ('00' + date.getDate()).slice(-2)
-      const ddd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-      return `${yyyy}-${mm}-${dd}(${ddd})`
+      this.id = this.value
+      if (this.options.name) this.name = this.options.name
+      if (this.value === 'new') {
+        this.id = this.genId()
+        this.dialog = this.editor
+      }
+      this.ranges = this.load(this.id)
     },
     async getEventsFromApi(v) {
       const item = v
@@ -135,17 +171,23 @@ export default {
     showEvents(value, header) {
       return value.filter(v => v.start <= header.end && v.end >= header.start)
     },
-    prev() {
-      const date = new Date(this.baseDate)
-      date.setDate(date.getDate() - 7)
-      this.baseDate = date
-      this.initialize()
+    genId: uuid,
+    load(id) {
+      try {
+        const loaded = JSON.parse(localStorage.getItem(id), this.reviver)
+        console.log('loaded', loaded, id)
+        const { ranges } = loaded
+        return ranges || defaultRange()
+      } catch {
+        return defaultRange()
+      }
     },
-    next() {
-      const date = new Date(this.baseDate)
-      date.setDate(date.getDate() + 7)
-      this.baseDate = date
-      this.initialize()
+    save(v) {
+      console.info('view saved.', this.id, v)
+      const settings = { id: this.id, ...v }
+      localStorage.setItem(this.id, JSON.stringify(settings))
+      this.$emit('save', settings)
+      this.ranges = settings.ranges
     }
   }
 }

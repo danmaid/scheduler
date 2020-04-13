@@ -1,139 +1,166 @@
 <template>
-  <v-container class="dayly-view" fluid>
-    <div class="d-flex justify-space-between align-baseline calendar">
-      <div class="title">
-        <v-btn icon @click="gotoPrevious">
+  <v-container class="custom" fluid>
+    <v-data-table :headers="headers" :items="calendars" group-by="category" disable-sort>
+      <template v-slot:header.name>
+        <v-btn icon @click="prev">
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
-        <v-btn text @click="gotoToday">今日</v-btn>
-        <v-btn icon @click="gotoNext">
+        <span style="cursor:pointer" v-text="formatDate(baseDate)" @click="goToday"></span>
+        <v-btn icon @click="next">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
-      </div>
-      <div
-        v-for="i in days"
-        :key="i.toString()"
-        class="day"
-      >{{ ('00' + i.getHours()).slice(-2) }}:{{ ('00' + i.getMinutes()).slice(-2) }}</div>
-    </div>
-    <div v-for="calendar of calendarList" :key="calendar.id" class="calendar">
-      <div class="d-flex justify-space-between align-baseline">
-        <div class="title" v-if="calendar.owner">{{ calendar.owner.name }} - {{ calendar.name }}</div>
-        <div class="title" v-else>{{ calendar.name }}</div>
-        <Events :baseUrl="calendar.source" :start="start" :end="end" v-slot="props" class="grid">
-          <div
-            v-for="event in props.events"
-            :key="event.id"
-            :style="{
-              'grid-column-start': getStartPos(event.start),
-              'grid-column-end': getEndPos(event.end),
-              display: getStartPos(event.start) === getEndPos(event.end) ? 'none' : 'block'
-            }"
-            class="event"
-          >{{ event.subject }}</div>
-        </Events>
-      </div>
-    </div>
+      </template>
+
+      <template v-slot:item.actions="{ value, item }">
+        <v-btn icon :disabled="!item.url" :loading="item.loading" @click="getEventsFromApi(item)">
+          <v-icon small>mdi-refresh</v-icon>
+        </v-btn>
+      </template>
+      <template v-slot:item.events="{ value, header, item }">
+        <template v-for="event of showEvents(value, header)">
+          <v-menu :key="event.id" :close-on-content-click="false" offset-x>
+            <template v-slot:activator="{ on }">
+              <v-chip
+                style="width:100%"
+                label
+                :color="event.color"
+                :disabled="item.loading"
+                v-text="event.name"
+                v-on="on"
+              ></v-chip>
+            </template>
+            <v-card>
+              <v-toolbar :color="event.color">
+                <v-toolbar-title v-text="event.name"></v-toolbar-title>
+              </v-toolbar>
+              <v-list>
+                <v-list-item v-for="(value, key) of event" :key="`${event.id}-${key}`">
+                  <v-list-item-content v-text="key"></v-list-item-content>
+                  <v-list-item-content v-text="value"></v-list-item-content>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-menu>
+        </template>
+      </template>
+    </v-data-table>
   </v-container>
 </template>
 
 <script>
 import { mapState } from 'vuex'
-import Events from '@/components/Events.vue'
-import { api as config } from 'config'
 
 export default {
-  name: 'DailyView',
-  components: { Events },
   data() {
     return {
-      config
+      headerStart: [
+        {
+          value: 'name',
+          divider: true,
+          width: 200,
+          class: 'pa-1 d-flex align-center justify-space-between'
+        },
+        { value: 'left', sortable: false, width: 10, class: 'px-1' }
+      ],
+      headerEnd: [{ value: 'actions', sortable: false, width: 10 }],
+      range: [],
+      baseDate: new Date()
     }
   },
   computed: {
     ...mapState({
-      calendarList: state => state.calendarList
+      calendars: state =>
+        state.calendars.map(v => ({ ...v, loading: false, events: [] }))
     }),
-    baseDate: {
-      get() {
-        return this.$store.state.baseDate
-      },
-      set(value) {
-        this.$store.commit('setBaseDate', value)
-      }
-    },
-    start() {
-      const newdate = new Date(this.baseDate)
-      return newdate
-    },
-    end() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() + 1)
-      return newdate
-    },
-    days() {
-      return [...Array(24).keys()].map(i => {
-        const newdate = new Date(this.baseDate)
-        newdate.setHours(newdate.getHours() + i)
-        return newdate
-      })
+    headers() {
+      return [].concat(this.headerStart, this.range, this.headerEnd)
     }
   },
+  watch: {
+    $route() {
+      this.initialize()
+    }
+  },
+  mounted() {
+    this.initialize()
+  },
   methods: {
-    gotoToday() {
-      this.baseDate = new Date(new Date().setHours(0, 0, 0, 0))
+    initialize() {
+      const dayStart = this.baseDate
+      dayStart.setHours(0, 0, 0, 0)
+      this.range = this.getRange(dayStart)
+      this.calendars.forEach(v => {
+        this.getEventsFromApi(v)
+      })
     },
-    gotoNext() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() + 1)
-      this.baseDate = newdate
+    getRange(date) {
+      return new Array(24).fill().map((v, i) => {
+        const time = new Date(date)
+        time.setHours(i, 0, 0, 0)
+        const start = new Date(time)
+        const end = new Date(time)
+        end.setHours(end.getHours() + 1)
+        end.setTime(end.getTime() - 1)
+        return {
+          text: this.formatTime(time),
+          value: 'events',
+          start,
+          end,
+          align: 'center',
+          width: '4%'
+        }
+      })
     },
-    gotoPrevious() {
-      const newdate = new Date(this.baseDate)
-      newdate.setDate(newdate.getDate() - 1)
-      this.baseDate = newdate
+    formatDate(date) {
+      const yyyy = date.getFullYear()
+      const mm = ('00' + (date.getMonth() + 1)).slice(-2)
+      const dd = ('00' + date.getDate()).slice(-2)
+      const ddd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
+      return `${yyyy}-${mm}-${dd}(${ddd})`
     },
-
-    getStartPos(date) {
-      const start = Array.from(this.days)
-        .reverse()
-        .findIndex(v => v <= date)
-      return start >= 0 ? this.days.length - start : 1
+    formatTime(date) {
+      const HH = ('00' + date.getHours()).slice(-2)
+      const MM = ('00' + date.getMinutes()).slice(-2)
+      return `${HH}:${MM}`
     },
-    getEndPos(date) {
-      const end = this.days.findIndex(v => date <= v) + 1
-      return end > 0 ? end : -1
+    async getEventsFromApi(v) {
+      const item = v
+      item.loading = true
+      const url = item.url
+      const res = await fetch(url)
+      const text = await res.text()
+      const events = JSON.parse(text, this.reviver)
+      if (Array.isArray(events)) {
+        item.events = events
+      }
+      item.loading = false
     },
-    getGridPos(startDate, endDate) {
-      const startRev = Array.from(this.days)
-        .reverse()
-        .findIndex(v => v <= startDate)
-      const start = startRev >= 0 ? this.days.length - startRev : 1
-      const end = this.days.findIndex(v => endDate <= v) + 1
-      return `${start} / ${end}`
+    reviver(key, value) {
+      return typeof value === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)
+        ? new Date(value)
+        : value
+    },
+    showEvents(value, header) {
+      return value.filter(v => v.start <= header.end && v.end >= header.start)
+    },
+    prev() {
+      const date = new Date(this.baseDate)
+      date.setDate(date.getDate() - 1)
+      this.baseDate = date
+      this.initialize()
+    },
+    next() {
+      const date = new Date(this.baseDate)
+      date.setDate(date.getDate() + 1)
+      this.baseDate = date
+      this.initialize()
+    },
+    goToday() {
+      const date = new Date()
+      this.baseDate = date
+      this.initialize()
     }
   }
 }
 </script>
-
-<style scoped>
-.calendar {
-  border-bottom: 1px solid #000;
-}
-.title {
-  flex: 0 0 200px;
-}
-.day {
-  flex: 1 1 100%;
-  border-left: 1px solid #000;
-}
-.grid {
-  flex: 1 1 100%;
-  display: grid;
-  grid-template-columns: repeat(24, 1fr);
-}
-.event {
-  background: cyan;
-  border: 1px solid;
-}
-</style>
