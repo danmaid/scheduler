@@ -11,6 +11,13 @@ const router = new VueRouter({
       component: () => import(/* webpackChunkName: "settings" */ '../views/Settings.vue')
     },
     {
+      path: '/week/:date',
+      name: 'week',
+      props: true,
+      component: () => import('../views/Week.vue')
+    },
+    { path: '/week', redirect: { name: 'week', params: { date: formatDate(new Date()) } } },
+    {
       path: '/custom/:value',
       name: 'custom',
       props: true,
@@ -21,16 +28,20 @@ const router = new VueRouter({
       redirect: { name: 'custom', params: { value: 'new' } }
     },
     {
-      path: '/day',
+      path: '/day/:date',
       name: 'day',
+      props: true,
       component: () => import('../views/Day.vue')
     },
-    {
-      path: '/week',
-      name: 'week',
-      component: () => import('../views/Week.vue')
-    }
+    { path: '/day', redirect: { name: 'day', params: { date: formatDate(new Date()) } } }
   ]
 })
+
+function formatDate(date) {
+  const yyyy = date.getFullYear()
+  const mm = ('00' + (date.getMonth() + 1)).slice(-2)
+  const dd = ('00' + date.getDate()).slice(-2)
+  return `${yyyy}-${mm}-${dd}`
+}
 
 export default router

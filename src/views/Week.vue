@@ -1,66 +1,28 @@
 <template>
-  <v-container class="custom" fluid>
-    <v-data-table :headers="headers" :items="calendars" group-by="category" disable-sort>
-      <template v-slot:header.left>
-        <v-btn icon @click="prev">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
-      </template>
-      <template v-slot:header.actions>
-        <v-btn icon @click="next">
-          <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
-      </template>
-
-      <template v-slot:item.actions="{ value, item }">
-        <v-btn icon :disabled="!item.url" :loading="item.loading" @click="getEventsFromApi(item)">
-          <v-icon small>mdi-refresh</v-icon>
-        </v-btn>
-      </template>
-      <template v-slot:item.events="{ value, header, item }">
-        <template v-for="event of showEvents(value, header)">
-          <v-menu :key="event.id" :close-on-content-click="false" offset-x>
-            <template v-slot:activator="{ on }">
-              <v-chip
-                style="width:100%"
-                label
-                :color="event.color"
-                :disabled="item.loading"
-                v-text="event.name"
-                v-on="on"
-              ></v-chip>
-            </template>
-            <v-card>
-              <v-toolbar :color="event.color">
-                <v-toolbar-title v-text="event.name"></v-toolbar-title>
-              </v-toolbar>
-              <v-list>
-                <v-list-item v-for="(value, key) of event" :key="`${event.id}-${key}`">
-                  <v-list-item-content v-text="key"></v-list-item-content>
-                  <v-list-item-content v-text="value"></v-list-item-content>
-                </v-list-item>
-              </v-list>
-            </v-card>
-          </v-menu>
-        </template>
-      </template>
-    </v-data-table>
+  <v-container class="week" fluid>
+    <schedule-grid
+      :value="calendars"
+      :ranges="ranges"
+      :label="label"
+      @prev="prev"
+      @next="next"
+      @home="goToday"
+      @refresh="getEventsFromApi"
+    ></schedule-grid>
   </v-container>
 </template>
 
 <script>
 import { mapState } from 'vuex'
+import ScheduleGrid from '../components/ScheduleGrid.vue'
+import { formatDate, getISOWeek } from '../libs/formatter'
 
 export default {
-  data() {
-    return {
-      headerStart: [
-        { text: 'カレンダー名', value: 'name', divider: true, width: 200 },
-        { value: 'left', sortable: false, width: 10, class: 'px-1' }
-      ],
-      headerEnd: [{ value: 'actions', sortable: false, width: 10 }],
-      range: [],
-      baseDate: new Date()
+  components: { ScheduleGrid },
+  props: {
+    date: {
+      type: String,
+      default: undefined
     }
   },
   computed: {
@@ -68,8 +30,30 @@ export default {
       calendars: state =>
         state.calendars.map(v => ({ ...v, loading: false, events: [] }))
     }),
-    headers() {
-      return [].concat(this.headerStart, this.range, this.headerEnd)
+    baseDate() {
+      return this.date ? new Date(this.date) : new Date()
+    },
+    label() {
+      return `${this.baseDate.getFullYear()}-W${this.getISOWeek(this.baseDate)}`
+    },
+    ranges() {
+      const start = new Date(this.baseDate)
+      start.setHours(0, 0, 0, 0)
+      start.setDate(start.getDate() - start.getDay() + 1)
+
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      end.setTime(end.getTime() - 1)
+
+      const points = new Array(7).fill().map((v, i) => {
+        const date = new Date(start)
+        date.setDate(date.getDate() + i)
+        // eslint-disable-next-line no-template-curly-in-string
+        const text = formatDate(date, '${yyyy}-${mm}-${dd}(${ddd})')
+        return { text, date }
+      })
+
+      return [{ start, end, points }]
     }
   },
   watch: {
@@ -82,37 +66,9 @@ export default {
   },
   methods: {
     initialize() {
-      const weekStart = this.baseDate
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
-      this.range = this.getRange(weekStart)
       this.calendars.forEach(v => {
         this.getEventsFromApi(v)
       })
-    },
-    getRange(date) {
-      return new Array(7).fill().map((v, i) => {
-        const day = new Date(date)
-        day.setDate(day.getDate() + i)
-        const start = new Date(day)
-        const end = new Date(day)
-        end.setDate(end.getDate() + 1)
-        end.setTime(end.getTime() - 1)
-        return {
-          text: this.formatDate(day),
-          value: 'events',
-          start,
-          end,
-          align: 'center',
-          width: '12%'
-        }
-      })
-    },
-    formatDate(date) {
-      const yyyy = date.getFullYear()
-      const mm = ('00' + (date.getMonth() + 1)).slice(-2)
-      const dd = ('00' + date.getDate()).slice(-2)
-      const ddd = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-      return `${yyyy}-${mm}-${dd}(${ddd})`
     },
     async getEventsFromApi(v) {
       const item = v
@@ -121,10 +77,12 @@ export default {
       const res = await fetch(url)
       const text = await res.text()
       const events = JSON.parse(text, this.reviver)
-      if (Array.isArray(events)) {
-        item.events = events
-      }
-      item.loading = false
+      setTimeout(() => {
+        if (Array.isArray(events)) {
+          item.events = events
+        }
+        item.loading = false
+      }, 3000)
     },
     reviver(key, value) {
       return typeof value === 'string' &&
@@ -132,21 +90,30 @@ export default {
         ? new Date(value)
         : value
     },
-    showEvents(value, header) {
-      return value.filter(v => v.start <= header.end && v.end >= header.start)
-    },
     prev() {
       const date = new Date(this.baseDate)
       date.setDate(date.getDate() - 7)
-      this.baseDate = date
-      this.initialize()
+      this.$router.push({
+        // eslint-disable-next-line no-template-curly-in-string
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+      })
     },
     next() {
       const date = new Date(this.baseDate)
       date.setDate(date.getDate() + 7)
-      this.baseDate = date
-      this.initialize()
-    }
+      this.$router.push({
+        // eslint-disable-next-line no-template-curly-in-string
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+      })
+    },
+    goToday() {
+      const date = new Date()
+      this.$router.push({
+        // eslint-disable-next-line no-template-curly-in-string
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+      })
+    },
+    getISOWeek
   }
 }
 </script>

@@ -11,9 +11,9 @@ module.exports = {
   publicPath: process.env.NODE_ENV === 'production'
     ? '/scheduler/dist/'
     : '/',
-  devServer: {
-    https: true
-  },
+  // devServer: {
+  //   https: true
+  // },
   transpileDependencies: [
     'vuetify'
   ],
