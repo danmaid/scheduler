@@ -70,7 +70,7 @@ export default {
         this.getEventsFromApi(v)
       })
     },
-    async getEventsFromApi(v) {
+    async getEventsFromApi(v, trigger) {
       const item = v
       item.loading = true
       const url = item.url
@@ -79,7 +79,7 @@ export default {
       const events = JSON.parse(text, this.reviver)
       setTimeout(() => {
         if (Array.isArray(events)) {
-          item.events = events
+          item.events = events.map(v => ({ ...v, trigger }))
         }
         item.loading = false
       }, 3000)

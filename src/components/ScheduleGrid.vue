@@ -32,7 +32,7 @@
 
       <template v-slot:item.events="{ value, header, item }">
         <div
-          style="display: grid; overflow-x: hidden; align-content: start; height: 100%"
+          class="event-grid"
           :style="{ 'grid-template-columns': `repeat(${header.points.length}, 1fr)`}"
         >
           <template v-for="event of getEvents(value, header, header.rows.get(item.id))">
@@ -46,7 +46,7 @@
         </div>
       </template>
       <template v-slot:item.actions="{ value, item }">
-        <v-btn icon :loading="item.loading" @click="$emit('refresh', item)">
+        <v-btn icon :loading="item.loading" @click="refresh(item, $event)">
           <v-icon small>mdi-refresh</v-icon>
         </v-btn>
       </template>
@@ -172,7 +172,20 @@ export default {
         rows[i] = row
       })
       return style
+    },
+    refresh(item, e) {
+      this.$emit('refresh', item, e)
+      console.log(e)
     }
   }
 }
 </script>
+
+<style scoped>
+.event-grid {
+  display: grid;
+  /* overflow-x: hidden; */
+  align-content: start;
+  height: 100%;
+}
+</style>

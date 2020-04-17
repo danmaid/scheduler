@@ -70,19 +70,34 @@ export default {
         this.getEventsFromApi(v)
       })
     },
-    async getEventsFromApi(v) {
+    async getEventsFromApi(v, trigger) {
       const item = v
       item.loading = true
       const url = item.url
       const res = await fetch(url)
       const text = await res.text()
       const events = JSON.parse(text, this.reviver)
-      setTimeout(() => {
+      setTimeout(async () => {
         if (Array.isArray(events)) {
-          item.events = events
+          await Promise.all(
+            events.map(
+              (v, i) =>
+                new Promise(resolve => {
+                  setTimeout(() => {
+                    const index = item.events.findIndex(e => e.id === v.id)
+                    if (index >= 0) {
+                      item.events.splice(index, 1, { ...v, trigger })
+                    } else {
+                      item.events.push({ ...v, trigger })
+                    }
+                    resolve()
+                  }, i * 100)
+                })
+            )
+          )
         }
         item.loading = false
-      }, 3000)
+      }, 500)
     },
     reviver(key, value) {
       return typeof value === 'string' &&
