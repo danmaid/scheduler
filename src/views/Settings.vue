@@ -63,7 +63,12 @@ export default {
           component: () => import('../components/SampleData.vue'),
           enabled: false
         },
-        { text: 'Office 365', value: 'o365', enabled: false }
+        {
+          text: 'Office 365',
+          value: 'o365',
+          component: () => import('../components/SourceMicrosoft.vue'),
+          enabled: false
+        }
       ]
     }
   },
