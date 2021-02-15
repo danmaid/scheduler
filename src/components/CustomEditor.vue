@@ -17,7 +17,7 @@
             hide-default-footer
             fixed-header
           >
-            <template v-slot:header.actions>
+            <template #header.actions>
               <v-btn icon small @click="ranges.push([{ id: genId() }])">
                 <v-icon>mdi-playlist-plus</v-icon>
               </v-btn>
@@ -65,11 +65,7 @@
               </v-edit-dialog>
             </template>
             <template v-slot:item.start="{ item, value }">
-              <v-edit-dialog
-                :return-value.sync="item.start"
-                large
-                @save="item.start = new Date(value)"
-              >
+              <v-edit-dialog :return-value.sync="item.start" large @save="item.start = new Date(value)">
                 {{ value && formatDate(value) }}
                 <template v-slot:input>
                   <input-date-time v-model="item.start"></input-date-time>
@@ -127,7 +123,7 @@
               <v-label>プリセット</v-label>
             </v-row>
             <v-row>
-              <v-col v-for="({ text, generator }) of presets" :key="text">
+              <v-col v-for="{ text, generator } of presets" :key="text">
                 <v-btn v-text="text" @click="ranges = generator()"></v-btn>
               </v-col>
             </v-row>
@@ -143,13 +139,14 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from 'vue'
 import InputDateTime from './InputDateTime.vue'
 import { v4 as uuid } from 'uuid'
 import presetsDefault from '../presets/default'
 import presetsHoliday from '../presets/holiday'
 
-export default {
+export default Vue.extend({
   components: { InputDateTime },
   props: {
     value: {
@@ -315,7 +312,7 @@ export default {
       }
     }
   }
-}
+})
 </script>
 
 <style>

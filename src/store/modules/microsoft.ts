@@ -1,10 +1,10 @@
 import * as Msal from 'msal'
-import { auth as config, api } from 'config'
 import loglevel from 'loglevel'
 loglevel.setDefaultLevel('debug')
 const logger = loglevel.getLogger('account')
 
-const msalConfig = { auth: { clientId: config.clientId } }
+const msalConfig = { auth: { clientId: process.env.VUE_APP_MICROSOFT_AUTH_CLIENT_ID } }
+const apiUrl = process.env.VUE_APP_MICROSOFT_API_BASEURL
 
 export default {
   namespaced: true,
@@ -55,7 +55,7 @@ export default {
       const accessToken = await dispatch('getAccessToken')
       const headers = new Headers()
       headers.append('Authorization', 'Bearer ' + accessToken)
-      const url = new URL(`${api.baseurl}/me`)
+      const url = new URL(`${apiUrl}/me`)
       const res = await fetch(url, { headers })
       logger.debug(res)
       const data = await res.json()
