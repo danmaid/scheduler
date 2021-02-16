@@ -22,13 +22,12 @@ export default {
   props: {
     date: {
       type: String,
-      default: undefined
-    }
+      default: undefined,
+    },
   },
   computed: {
     ...mapState({
-      calendars: state =>
-        state.calendars.map(v => ({ ...v, loading: false, events: [] }))
+      calendars: (state) => state.calendars.map((v) => ({ ...v, loading: false, events: [] })),
     }),
     baseDate() {
       return this.date ? new Date(this.date) : new Date()
@@ -54,19 +53,19 @@ export default {
       })
 
       return [{ start, end, points }]
-    }
+    },
   },
   watch: {
     $route() {
       this.initialize()
-    }
+    },
   },
   mounted() {
     this.initialize()
   },
   methods: {
     initialize() {
-      this.calendars.forEach(v => {
+      this.calendars.forEach((v) => {
         this.getEventsFromApi(v)
       })
     },
@@ -82,9 +81,9 @@ export default {
           await Promise.all(
             events.map(
               (v, i) =>
-                new Promise(resolve => {
+                new Promise((resolve) => {
                   setTimeout(() => {
-                    const index = item.events.findIndex(e => e.id === v.id)
+                    const index = item.events.findIndex((e) => e.id === v.id)
                     if (index >= 0) {
                       item.events.splice(index, 1, { ...v, trigger })
                     } else {
@@ -100,17 +99,14 @@ export default {
       }, 500)
     },
     reviver(key, value) {
-      return typeof value === 'string' &&
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)
-        ? new Date(value)
-        : value
+      return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value) ? new Date(value) : value
     },
     prev() {
       const date = new Date(this.baseDate)
       date.setDate(date.getDate() - 7)
       this.$router.push({
         // eslint-disable-next-line no-template-curly-in-string
-        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') },
       })
     },
     next() {
@@ -118,17 +114,17 @@ export default {
       date.setDate(date.getDate() + 7)
       this.$router.push({
         // eslint-disable-next-line no-template-curly-in-string
-        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') },
       })
     },
     goToday() {
       const date = new Date()
       this.$router.push({
         // eslint-disable-next-line no-template-curly-in-string
-        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') }
+        params: { date: formatDate(date, '${yyyy}-${mm}-${dd}') },
       })
     },
-    getISOWeek
-  }
+    getISOWeek,
+  },
 }
 </script>

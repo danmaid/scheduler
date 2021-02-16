@@ -1,34 +1,30 @@
 <template>
-  <v-app>
+  <v-app class="cyber">
     <v-app-bar app>
-      <v-toolbar-title>予定表</v-toolbar-title>
+      <v-toolbar-title style="cursor: pointer" @click="$router.push('/')">Schedule Maid</v-toolbar-title>
+      <v-tabs align-with-title style="width: auto; flex: 0 0 auto">
+        <v-tab to="/week">週表示</v-tab>
+        <v-tab to="/day">日表示</v-tab>
+        <v-tab v-for="[id, v] of views" :key="id" :to="{ name: 'custom', params: { value: id, options: v } }">
+          <span v-text="v.name"></span>
+          <v-btn icon small @click="deleteView(v)">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-tab>
+      </v-tabs>
+      <v-btn icon :to="{ name: 'custom', params: { value: 'new' } }">
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
 
       <v-spacer></v-spacer>
-      <v-icon v-if="calendars.length <= 0">mdi-arrow-right</v-icon>
       <v-btn icon to="/settings">
         <v-icon>mdi-cog</v-icon>
       </v-btn>
-
-      <template v-slot:extension>
-        <v-tabs align-with-title>
-          <v-tab to="/week">週表示</v-tab>
-          <v-tab to="/day">日表示</v-tab>
-          <v-tab v-for="[id, v] of views" :key="id" :to="{ name: 'custom', params: { value: id, options: v } }">
-            <span v-text="v.name"></span>
-            <v-btn icon small @click="deleteView(v)">
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </v-tab>
-          <v-btn icon @click="$router.push({ name: 'custom', params: { value: 'new' } })">
-            <v-icon>mdi-plus</v-icon>
-          </v-btn>
-        </v-tabs>
-      </template>
     </v-app-bar>
 
-    <v-content>
+    <v-main>
       <router-view v-model="params" @save="save($event)" />
-    </v-content>
+    </v-main>
 
     <v-footer> <v-spacer></v-spacer>&copy; 2020 男メイド </v-footer>
   </v-app>
@@ -84,7 +80,7 @@ export default {
     ...mapState({
       // loggedin: state => state.account.loggedin,
       // me: state => state.account.me
-      calendars: state => state.calendars
+      calendars: (state) => state.calendars
     })
   }
   // mounted() {
